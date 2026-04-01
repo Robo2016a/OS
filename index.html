@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Web OS</title>
+<style>
+body {
+  margin:0;
+  font-family:sans-serif;
+  background:#1e1e2f;
+  color:white;
+  overflow:hidden;
+}
+
+/* WINDOW */
+.window {
+  position:absolute;
+  width:350px;
+  height:300px;
+  background:#222;
+  border-radius:10px;
+  display:none;
+  resize:both;
+  overflow:auto;
+}
+
+.header {
+  background:#444;
+  padding:5px;
+  cursor:move;
+  display:flex;
+  justify-content:space-between;
+}
+
+/* DOCK */
+#dock {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#000a;
+  display:flex;
+  justify-content:center;
+  gap:15px;
+  padding:10px;
+}
+
+.app {
+  width:50px;
+  height:50px;
+  background:white;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:black;
+}
+
+/* FILE LIST */
+.file {
+  cursor:pointer;
+  padding:5px;
+}
+.file:hover { background:#555; }
+
+</style>
+</head>
+<body>
+
+<!-- DOCK -->
+<div id="dock">
+  <div class="app" onclick="openApp('files')">📂</div>
+  <div class="app" onclick="openApp('notes')">📝</div>
+  <div class="app" onclick="openApp('browser')">🌐</div>
+</div>
+
+<!-- FILES -->
+<div id="files" class="window">
+  <div class="header">Files <button onclick="closeApp('files')">X</button></div>
+  <div>
+    <input type="file" onchange="uploadFile(event)">
+    <div id="fileList"></div>
+  </div>
+</div>
+
+<!-- NOTES -->
+<div id="notes" class="window">
+  <div class="header">Notes <button onclick="closeApp('notes')">X</button></div>
+  <textarea id="noteArea" style="width:100%;height:90%"></textarea>
+  <button onclick="saveNote()">Save</button>
+</div>
+
+<!-- BROWSER -->
+<div id="browser" class="window">
+  <div class="header">Browser <button onclick="closeApp('browser')">X</button></div>
+  <input id="url" placeholder="https://example.com">
+  <button onclick="go()">Go</button>
+  <iframe id="frame" style="width:100%;height:80%"></iframe>
+</div>
+
+<script>
+// BASIC WINDOW CONTROL
+function openApp(id){
+  let el=document.getElementById(id);
+  el.style.display="block";
+  drag(el);
+}
+function closeApp(id){
+  document.getElementById(id).style.display="none";
+}
+
+// DRAG
+function drag(el){
+  let pos1=0,pos2=0,pos3=0,pos4=0;
+  el.querySelector(".header").onmousedown=dragMouseDown;
+
+  function dragMouseDown(e){
+    pos3=e.clientX; pos4=e.clientY;
+    document.onmouseup=()=>document.onmousemove=null;
+    document.onmousemove=dragMove;
+  }
+  function dragMove(e){
+    pos1=pos3-e.clientX;
+    pos2=pos4-e.clientY;
+    pos3=e.clientX;
+    pos4=e.clientY;
+    el.style.top=(el.offsetTop-pos2)+"px";
+    el.style.left=(el.offsetLeft-pos1)+"px";
+  }
+}
+
+// FILE SYSTEM (LOCAL)
+let files = JSON.parse(localStorage.getItem("files")||"[]");
+
+function renderFiles(){
+  let list=document.getElementById("fileList");
+  list.innerHTML="";
+  files.forEach((f,i)=>{
+    let div=document.createElement("div");
+    div.className="file";
+    div.innerText=f.name;
+    div.onclick=()=>downloadFile(i);
+    list.appendChild(div);
+  });
+}
+
+function uploadFile(e){
+  let file=e.target.files[0];
+  let reader=new FileReader();
+  reader.onload=function(){
+    files.push({name:file.name,data:reader.result});
+    localStorage.setItem("files",JSON.stringify(files));
+    renderFiles();
+    notify("File saved: "+file.name);
+  };
+  reader.readAsDataURL(file);
+}
+
+function downloadFile(i){
+  let a=document.createElement("a");
+  a.href=files[i].data;
+  a.download=files[i].name;
+  a.click();
+}
+
+// NOTES
+function saveNote(){
+  localStorage.setItem("note",noteArea.value);
+  notify("Note saved");
+}
+noteArea.value=localStorage.getItem("note")||"";
+
+// BROWSER
+function go(){
+  frame.src=url.value;
+}
+
+// NOTIFICATIONS
+function notify(msg){
+  let n=document.createElement("div");
+  n.innerText=msg;
+  n.style.position="fixed";
+  n.style.bottom="80px";
+  n.style.right="10px";
+  n.style.background="#333";
+  n.style.padding="10px";
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(),2000);
+}
+
+// INIT
+renderFiles();
+</script>
+
+</body>
+</html>
